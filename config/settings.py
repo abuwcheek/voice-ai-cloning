@@ -31,6 +31,9 @@ INSTALLED_APPS = [
 
     # my apps
     'voice_clone',
+
+    # my frameworks
+    'rest_framework',
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Natija</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #4f46e5, #06b6d4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 700px;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        h1 {
+            color: #1e293b;
+            margin-bottom: 20px;
+        }
+
+        .audio-box {
+            background: #eef2ff;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        h3 {
+            color: #334155;
+            margin-bottom: 10px;
+        }
+
+        audio {
+            width: 100%;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 25px;
+            text-decoration: none;
+            background: #4f46e5;
+            color: white;
+            padding: 14px 30px;
+            border-radius: 12px;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            background: #3730a3;
+        }
+
+        .success {
+            color: #16a34a;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>Natija</h1>
+    <p class="success">✅ Audio muvaffaqiyatli yuklandi</p>
+
+    <div class="audio-box">
+        <h3>Original Audio</h3>
+        <audio controls>
+            <source src="{{ audio.original_file.url }}">
+        </audio>
+    </div>
+
+    {% if audio.generated_file %}
+    <div class="audio-box">
+        <h3>Sun’iy Audio</h3>
+        <audio controls>
+            <source src="{{ audio.generated_file.url }}">
+        </audio>
+    </div>
+    {% endif %}
+
+    {% if audio.text %}
+    <div class="audio-box">
+        <h3>Aniqlangan matn</h3>
+        <p>{{ audio.text }}</p>
+    </div>
+    {% endif %}
+
+    <a href="/" class="btn">Yangi audio yuklash</a>
+
+</div>
+
+</body>
+</html>
