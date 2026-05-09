@@ -1,57 +1,55 @@
 import librosa
-import soundfile as sf
 import numpy as np
+import soundfile as sf
 import os
 from django.conf import settings
-from django.core.files.base import ContentFile
 
 
 
-def process_voice_to_ai(audio_instance):
-    """
-    Ovozni sun'iy ko'rinishga keltirish va akustik tahlil qilish.
-    """
+def process_voice_to_ai(instance):
     try:
-        audio_instance.status = 'processing'
-        audio_instance.save()
+        # 1. Holatni yangilash
+        instance.status = 'processing'
+        instance.save()
 
-        # 1. Faylni yuklash
-        path = audio_instance.original_file.path
-        y, sr = librosa.load(path, sr=None)
+        # 2. Yo'llarni sozlash
+        input_path = instance.original_file.path
+        gen_filename = f"cloned_{os.path.basename(input_path)}"
+        gen_relative_path = os.path.join('generated', gen_filename)
+        output_path = os.path.join(settings.MEDIA_ROOT, gen_relative_path)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        # 2. AI Transformatsiyasi (Pitch shifting)
-        # Ovozni 4 yarim ton pastlatamiz (bu ko'pincha "sun'iylik" effektini beradi)
-        # Haqiqiy RVC ishlatish uchun model.pth fayli kerak bo'ladi
-        y_shifted = librosa.effects.pitch_shift(y, sr=sr, n_steps=-4)
+        # 3. Ovozni yuklash (Asl sifatda)
+        y, sr = librosa.load(input_path, sr=None)
 
-        # 3. Spektral xususiyatlarni sug'urib olish (Dissertatsiya uchun eng muhim qism)
-        # MFCC - Mel-frequency cepstral coefficients (Ovozning "barmoq izi")
-        mfccs = librosa.feature.mfcc(y=y_shifted, sr=sr, n_mfcc=13)
-        spectral_centroid = librosa.feature.spectral_centroid(y=y_shifted, sr=sr)
+        # --- ILMIY ISH UCHUN MUHIM QISMLAR ---
         
-        # O'rtacha qiymatlarni hisoblash (JSONda saqlash uchun)
-        features = {
-            "mfcc_mean": float(np.mean(mfccs)),
-            "spectral_centroid_mean": float(np.mean(spectral_centroid)),
-            "sampling_rate": sr,
-            "duration": float(librosa.get_duration(y=y, sr=sr)),
-            "is_processed_by_ai": True
-        }
+        # A. Shovqinni filtrlash (Pre-emphasis)
+        # Bu yuqori chastotalarni kuchaytirib, nutqni aniqroq qiladi
+        y_filt = librosa.effects.preemphasis(y)
 
-        # 4. Natijani vaqtinchalik xotirada saqlash
-        buffer = io.BytesIO()
-        sf.write(buffer, y_shifted, sr, format='WAV')
-        buffer.seek(0)
+        # B. Formantlarni saqlagan holda pitch o'zgartirish
+        # n_stepsni juda kichik (masalan -0.3) ushlaymiz, 
+        # shunda "robot" ovozi chiqib qolmaydi
+        y_shifted = librosa.effects.pitch_shift(y_filt, sr=sr, n_steps=-0.3)
 
-        # 5. Modelga saqlash
-        file_name = f"ai_version_{audio_instance.id}.wav"
-        audio_instance.generated_file.save(file_name, ContentFile(buffer.read()))
-        
-        audio_instance.spectral_features = features
-        audio_instance.status = 'completed'
-        audio_instance.save()
+        # C. Spektral qobiqni silliqlash (Time-stretching orqali biroz "jon" kiritish)
+        # Ovoz tezligini 1% ga sekinlashtirish inson qulog'iga tabiiyroq tuyuladi
+        y_stretched = librosa.effects.time_stretch(y_shifted, rate=0.99)
+
+        # D. Normallashtirish
+        # Peak-normalization: ovoz xirillab qolmasligi uchun
+        y_final = librosa.util.normalize(y_stretched)
+
+        # 4. Faylni saqlash
+        sf.write(output_path, y_final, sr)
+
+        # 5. Natijani bazaga yozish
+        instance.generated_file = gen_relative_path
+        instance.status = 'completed'
+        instance.save()
 
     except Exception as e:
-        audio_instance.status = 'failed'
-        audio_instance.save()
-        print(f"Xatolik: {str(e)}")
+        instance.status = 'failed'
+        instance.error_message = str(e)
+        instance.save()

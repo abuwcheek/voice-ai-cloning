@@ -4,7 +4,12 @@ from .models import Audio
 
 
 
+
+
 @admin.register(Audio)
 class AudioAdmin(admin.ModelAdmin):
-    list_display = ('id', 'status', 'created_at')
-    readonly_fields = ('created_at', 'updated_at')
+    # Ro'yxatda nimalar ko'rinsin
+    list_display = ('id', 'status', 'created_at', 'generated_file')
+    
+    # Faqat o'qish uchun maydonlar
+    readonly_fields = ('created_at', 'updated_at', 'generated_file')
